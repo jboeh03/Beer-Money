@@ -43,7 +43,7 @@ async function SettingsContent() {
         <Card>
           <h2 className="text-sm font-semibold text-foreground">Notifications</h2>
           <p className="mt-2 text-sm text-secondary">
-            Push notification settings are not in this branch yet.
+            Reminders for rewards you claim yourself. They never sign in or submit a form.
           </p>
           <Link
             href="/settings/notifications"

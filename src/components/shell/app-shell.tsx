@@ -1,3 +1,4 @@
+import { Bell } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AccountMenu } from "@/components/shell/account-menu";
@@ -55,6 +56,25 @@ function NavLinks({
   });
 }
 
+function NotificationsLink({ active, compact }: { active: boolean; compact?: boolean }) {
+  return (
+    <Link
+      href="/settings/notifications"
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex min-h-11 items-center gap-2 rounded-lg text-xs font-medium outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+        compact ? "min-w-11 justify-center px-2" : "px-3 py-2",
+        active
+          ? "bg-accent text-accent-foreground"
+          : "text-secondary hover:bg-muted hover:text-foreground",
+      )}
+    >
+      <Bell className="size-4 shrink-0" aria-hidden="true" />
+      {compact ? <span className="sr-only">Notifications</span> : <span>Notifications</span>}
+    </Link>
+  );
+}
+
 function Brand({ href }: { href: string }) {
   return (
     <Link
@@ -92,13 +112,21 @@ export function AppShell({
         <nav aria-label="Primary" className="flex flex-1 flex-col gap-1">
           <NavLinks items={items} activeHref={activeHref} counts={counts} />
         </nav>
+        <div className="mt-auto">
+          <NotificationsLink active={activeHref === "/settings/notifications"} />
+        </div>
       </aside>
       <div className="flex min-w-0 flex-col">
         <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 md:justify-end">
           <div className="md:hidden">
             <Brand href={homeHref} />
           </div>
-          <AccountMenu />
+          <div className="flex items-center gap-1">
+            <div className="md:hidden">
+              <NotificationsLink active={activeHref === "/settings/notifications"} compact />
+            </div>
+            <AccountMenu />
+          </div>
         </header>
         <main id="content" className="min-w-0 flex-1 px-4 py-6 pb-28 md:px-8 md:py-8 md:pb-8">
           {children}

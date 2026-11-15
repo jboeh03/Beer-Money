@@ -119,6 +119,29 @@ type WalletAddressRow = {
   created_at: string;
 };
 
+type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  created_at: string;
+  last_used_at: string | null;
+};
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string | null;
+  url: string | null;
+  source: string | null;
+  created_at: string;
+  sent_at: string | null;
+  error: string | null;
+};
+
 type PostRow = {
   id: string;
   user_id: string;
@@ -197,6 +220,8 @@ export type Database = {
           },
         ];
       };
+      push_subscriptions: Table<PushSubscriptionRow>;
+      notifications: Table<NotificationRow>;
       posts: Table<PostRow> & {
         Relationships: [
           {
@@ -212,7 +237,34 @@ export type Database = {
       wallet_addresses: Table<WalletAddressRow>;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      begin_owner_notifications: {
+        Args: {
+          p_title: string;
+          p_body: string | null;
+          p_url: string | null;
+          p_source: string | null;
+        };
+        Returns: {
+          notification_id: string;
+          user_id: string;
+          subscription_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth_secret: string;
+        }[];
+      };
+      finish_owner_notification: {
+        Args: {
+          p_notification_id: string;
+          p_sent: boolean;
+          p_error: string | null;
+          p_prune_endpoints: string[];
+          p_used_endpoints: string[];
+        };
+        Returns: undefined;
+      };
+    };
     Enums: {
       reward_status: RewardStatus;
       post_approval_state: PostApprovalState;
