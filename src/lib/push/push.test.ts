@@ -222,7 +222,7 @@ test("client code cannot see server push secrets", () => {
       if (!/\.(ts|tsx|js)$/.test(entry) || entry.endsWith(".test.ts")) continue;
       const text = readFileSync(full, "utf8");
       if (!text.includes('"use client"') && !text.includes("'use client'")) continue;
-      if (/VAPID_PRIVATE_KEY|NOTIFY_SECRET|SERVICE_ROLE|service-role/.test(text)) {
+      if (/VAPID_PRIVATE_KEY|NOTIFY_SECRET|SERVICE_ROLE|service-role|API_KEYS_ENCRYPTION_KEY/.test(text)) {
         offenders.push(path.relative(root, full));
       }
     }
@@ -231,7 +231,7 @@ test("client code cannot see server push secrets", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("the service role client is only used to send secret-route pushes", () => {
+test("the service role client stays on server-only secret paths", () => {
   const importers: string[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir)) {
@@ -249,6 +249,7 @@ test("the service role client is only used to send secret-route pushes", () => {
   };
   walk(path.join(root, "src"));
   assert.deepEqual(importers.sort(), [
+    "src/lib/api-keys/get-user-api-key.ts",
     "src/lib/push/broadcast.ts",
     "src/lib/supabase/service-role.ts",
   ]);

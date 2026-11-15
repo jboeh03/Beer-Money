@@ -63,6 +63,14 @@ export function AccountMenuButton({ email }: { email: string | null }) {
           </Link>
           <Link
             role="menuitem"
+            href="/settings/api-keys"
+            className={itemClass}
+            onClick={() => setOpen(false)}
+          >
+            API keys
+          </Link>
+          <Link
+            role="menuitem"
             href="/settings/integrations"
             className={itemClass}
             onClick={() => setOpen(false)}
