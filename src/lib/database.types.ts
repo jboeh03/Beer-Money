@@ -95,6 +95,30 @@ type PayoutRow = {
   updated_at: string;
 };
 
+export type AccountCadence = "daily" | "24h" | "weekly" | "monthly" | "none";
+
+type ConnectedAccountRow = {
+  id: string;
+  user_id: string;
+  app_name: string;
+  category: string;
+  username: string | null;
+  referral_url: string | null;
+  referral_code: string | null;
+  cadence: AccountCadence;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type WalletAddressRow = {
+  id: string;
+  user_id: string;
+  label: string | null;
+  address: string;
+  created_at: string;
+};
+
 type PostRow = {
   id: string;
   user_id: string;
@@ -184,6 +208,8 @@ export type Database = {
           },
         ];
       };
+      connected_accounts: Table<ConnectedAccountRow>;
+      wallet_addresses: Table<WalletAddressRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
