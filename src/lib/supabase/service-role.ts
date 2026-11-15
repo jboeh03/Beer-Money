@@ -3,7 +3,8 @@ import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
-// Server-only client for later jobs. The signed-in shell does not use it.
+// Server-only client. The signed-in test notification does not use it.
+// POST /api/notify uses it only to call the push RPCs.
 // The service role bypasses RLS, so callers must set user_id themselves.
 // Never import this module from a Client Component.
 export function createServiceRoleClient() {

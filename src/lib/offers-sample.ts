@@ -1,0 +1,67 @@
+import type { OfferRecord } from "@/lib/offers-model";
+
+// Fictional comparison rows. Not real offers.
+export function sampleOffers(): OfferRecord[] {
+  return [
+    {
+      id: "sample-high",
+      title: "Sample board offer",
+      app: "Sample High",
+      platform: "Web",
+      payoutCents: 2400,
+      minutes: 60,
+      hourly: 24,
+      notes: "SAMPLE. Highest payout in this preview.",
+      url: "https://example.com/sample-high",
+      status: "vetted",
+    },
+    {
+      id: "sample-mid",
+      title: "Sample board offer",
+      app: "Sample Mid",
+      platform: "iOS",
+      payoutCents: 1600,
+      minutes: 40,
+      hourly: 24,
+      notes: "SAMPLE. Second payout.",
+      url: "https://example.com/sample-mid",
+      status: "vetted",
+    },
+    {
+      id: "sample-low",
+      title: "Sample board offer",
+      app: "Sample Low",
+      platform: "Android",
+      payoutCents: 1200,
+      minutes: 30,
+      hourly: 24,
+      notes: "SAMPLE. Lower payout.",
+      url: "https://example.com/sample-low",
+      status: "new",
+    },
+    {
+      id: "sample-other",
+      title: "Sample other offer",
+      app: "Sample Other",
+      platform: "Web",
+      payoutCents: 800,
+      minutes: 20,
+      hourly: 24,
+      notes: "SAMPLE. Hidden when you search for the board offer.",
+      url: "https://example.com/sample-other",
+      status: "queued",
+    },
+    {
+      id: "sample-rejected",
+      title: "Sample board offer",
+      app: "Sample Rejected",
+      platform: "Web",
+      payoutCents: 9900,
+      minutes: 10,
+      hourly: 594,
+      notes: "SAMPLE. Rejected and excluded.",
+      url: null,
+      status: "rejected",
+    },
+  ];
+}

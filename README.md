@@ -10,6 +10,7 @@ Single-user daily rewards dashboard. This repo currently has the Next.js shell, 
 - The anon key (or the newer publishable key) is the only Supabase key used in client code. The service-role key stays on the server.
 - No Plaid tokens, wallet session tokens, or other third-party credentials in the browser. The Supabase session is an auth cookie managed by `@supabase/ssr`, not a token in `localStorage`.
 - Scheduled jobs are not in this version. When they are added, they will run in Supabase with `pg_cron` (or a scheduled Supabase function), not Vercel Cron.
+- Push notifications only remind. Tapping one opens a page. It does not sign in, submit a form, or claim a reward.
 
 ## Stack
 
@@ -43,10 +44,14 @@ Fill in the three names from Project Settings → API Keys. `.env.example` has n
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser and server. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser and server. Use the anon key, or the newer publishable key (`sb_publishable_...`). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server only. Use the service_role key, or the newer secret key (`sb_secret_...`). Never prefix this with `NEXT_PUBLIC_`. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Browser and server. The public half of the VAPID key pair. |
+| `VAPID_PRIVATE_KEY` | Server only. Never prefix this with `NEXT_PUBLIC_`. |
+| `VAPID_SUBJECT` | Server only. A `mailto:` or `https:` contact for the push provider. |
+| `NOTIFY_SECRET` | Server only. Callers send it in the `x-notify-secret` header. |
 
 Add the same three variables to the Vercel project before the first deployment build. Next.js inlines `NEXT_PUBLIC_` values at build time, so a build without them bakes in an unconfigured client.
 
-`src/lib/supabase/service-role.ts` imports `server-only`. A Client Component that imports it fails the build. The signed-in page does not call it. The service role bypasses Row Level Security, so a later job that uses it must set `user_id` itself. The shell uses the anon key plus your session, and RLS applies.
+`src/lib/supabase/service-role.ts` imports `server-only`. A Client Component that imports it fails the build. The signed-in test button does not call it. `POST /api/notify` uses it only to call the push functions, because that route has no user session. The shell and the test button use the anon key plus your session, and RLS applies.
 
 ## 3. Apply the migrations
 
@@ -100,6 +105,8 @@ Bots write only through these tables.
 | `referral_links` | Referral URL, rate, sign-ups, and priority. |
 | `payouts` | Expected or received amounts. |
 | `posts` | Channel, approval state, and a required disclosure. |
+| `push_subscriptions` | Browser push endpoints for reminders. |
+| `notifications` | Log of reminder pushes. A row does not mean anything was claimed. |
 
 `reward_status` is `new`, `vetted`, `queued`, `claimed`, `paid`, `rejected`. Opportunities, offers, referral links, and payouts use it.
 
@@ -118,6 +125,41 @@ There is no wallet table in this version. When wallet data is added, it will be 
 `/dev/components` previews the shared shell and components with fictional sample data. It is not a product screen.
 
 `/today` is the home screen after sign-in. It reads your opportunities and payouts. An empty account shows an empty state. Sample numbers appear only if you open Preview with sample data.
+
+## Installable app and push notifications
+
+The app can be saved to an iPhone home screen. Web push on iOS works only from that installed app, on iOS 16.4 or later. In Safari, tap Share, then Add to Home Screen, open Beer Money from the icon, and use Settings → Notifications → Enable notifications.
+
+A notification such as “Shuffle.us daily bonus ready” opens its URL inside the app. You claim the reward on that site yourself.
+
+Generate a VAPID key pair once and keep it. New keys invalidate existing subscriptions.
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Put the public key in `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and the private key in `VAPID_PRIVATE_KEY`. Set `VAPID_SUBJECT` to a contact such as `mailto:you@example.com`. Set `NOTIFY_SECRET` to a long random string:
+
+```bash
+openssl rand -base64 32
+```
+
+Do not commit any of these values. Add them to `.env.local` and to the Vercel project. The public key is inlined at build time, so redeploy after setting it.
+
+The Enable, Send test notification, and Disable buttons use your signed-in session. Row Level Security limits them to your rows. The test button does not use `NOTIFY_SECRET`.
+
+A reminder caller uses the shared secret. This example does not sign in or claim anything:
+
+```bash
+curl -X POST https://beer-money.vercel.app/api/notify \
+  -H "content-type: application/json" \
+  -H "x-notify-secret: $NOTIFY_SECRET" \
+  -d '{"title":"Shuffle.us daily bonus ready","body":"Open Beer Money and claim it yourself.","url":"/today","source":"shuffle"}'
+```
+
+The route writes one `notifications` row per account that has a device, sends to those devices, and deletes endpoints the push service reports as gone (HTTP 404 or 410).
+
+`POST /api/notify` has no user cookie, so `auth.uid()` is null and RLS would hide every subscription. That route uses the service-role key only to call `begin_owner_notifications` and `finish_owner_notification`. Those functions are security definer, live in the unexposed `private` schema, and reject any JWT whose role is not `service_role`. The public wrappers are security invoker and executable only by `service_role`. The signed-in test button never takes that path.
 
 ## Scripts
 
