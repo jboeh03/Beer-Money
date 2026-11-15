@@ -92,11 +92,12 @@ export function AppShell({
         <nav aria-label="Primary" className="flex flex-1 flex-col gap-1">
           <NavLinks items={items} activeHref={activeHref} counts={counts} />
         </nav>
-        <AccountMenu />
       </aside>
       <div className="flex min-w-0 flex-col">
-        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 md:hidden">
-          <Brand href={homeHref} />
+        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 md:justify-end">
+          <div className="md:hidden">
+            <Brand href={homeHref} />
+          </div>
           <AccountMenu />
         </header>
         <main id="content" className="min-w-0 flex-1 px-4 py-6 pb-28 md:px-8 md:py-8 md:pb-8">
