@@ -15,7 +15,13 @@ export type TodayLoad =
   | { status: "signed-out" }
   | { status: "error" }
   | { status: "empty"; name: string }
-  | { status: "ready"; name: string; view: TodayView };
+  | {
+      status: "ready";
+      name: string;
+      view: TodayView;
+      hasOpportunities: boolean;
+      hasPayouts: boolean;
+    };
 
 function displayName(email: string | null): string {
   const local = email?.split("@")[0]?.split(/[._+-]/)[0] ?? "";
@@ -124,6 +130,8 @@ export async function loadToday(now = new Date()): Promise<TodayLoad> {
       status: "ready",
       name,
       view: buildTodayView(opportunityRows, payoutRows, now),
+      hasOpportunities: opportunityRows.length > 0,
+      hasPayouts: payoutRows.length > 0,
     };
   } catch {
     return { status: "error" };

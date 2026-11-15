@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { SampleNotice } from "@/components/sample-notice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { compareOffers, offerName, winnerGap, type OfferRecord } from "@/lib/offers-model";
+import type { OwnerApp } from "@/lib/account-surfaces";
 import { formatUsd } from "@/lib/today-model";
 
 const fieldClass =
@@ -15,10 +17,22 @@ function hourlyLabel(value: number | null) {
   return value == null ? "—" : `${formatUsd(Math.round(value * 100))}/hr`;
 }
 
-export function MatcherBoard({ rows, sample = false }: { rows: OfferRecord[]; sample?: boolean }) {
-  const [query, setQuery] = useState(sample ? "Sample board offer" : "");
+export function MatcherBoard({
+  rows,
+  sample = false,
+  apps = [],
+}: {
+  rows: OfferRecord[];
+  sample?: boolean;
+  apps?: OwnerApp[];
+}) {
+  const pageSample = sample && apps.length === 0;
+  const [query, setQuery] = useState(pageSample ? "Sample board offer" : "");
   const [platform, setPlatform] = useState("all");
-  const [applied, setApplied] = useState({ query: sample ? "Sample board offer" : "", platform: "all" });
+  const [applied, setApplied] = useState({
+    query: pageSample ? "Sample board offer" : "",
+    platform: "all",
+  });
 
   const compared = useMemo(
     () => compareOffers(rows, applied),
@@ -31,7 +45,7 @@ export function MatcherBoard({ rows, sample = false }: { rows: OfferRecord[]; sa
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          {sample ? (
+          {pageSample ? (
             <p className="mb-3 inline-flex rounded-full border border-border px-3 py-1 text-xs font-medium text-secondary">
               SAMPLE DATA. All numbers are mock. Not real offers or accounts.
             </p>
@@ -41,12 +55,62 @@ export function MatcherBoard({ rows, sample = false }: { rows: OfferRecord[]; sa
             Compare payouts for the same task. Highest payout is first. You open the winner yourself.
           </p>
         </div>
-        {sample ? (
+        {pageSample ? (
           <Button href="/best-offer-matcher" variant="secondary">
             Hide sample data
           </Button>
         ) : null}
       </header>
+
+      {apps.length > 0 ? (
+        <Card>
+          <h2 className="text-sm font-semibold text-foreground">Your apps</h2>
+          <p className="mt-1 text-sm text-secondary">
+            Pick an app to compare stored offers. No payout is invented for an app.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {apps.map((app, index) => {
+              const selected = applied.query.trim().toLowerCase() === app.appName.trim().toLowerCase();
+              return (
+                <button
+                  key={`${app.category}-${app.appName}-${index}`}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => {
+                    setQuery(app.appName);
+                    setPlatform("all");
+                    setApplied({ query: app.appName, platform: "all" });
+                  }}
+                  className={cn(
+                    "inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                    selected
+                      ? "bg-accent text-accent-foreground"
+                      : "border border-border text-secondary hover:text-foreground",
+                  )}
+                >
+                  {app.appName}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
+
+      {sample && apps.length > 0 ? (
+        <>
+          <SampleNotice
+            label="Offer payouts: sample until Scout is connected"
+            active
+            hideHref="/best-offer-matcher"
+          />
+          <p className="text-xs text-secondary">Sample rows are not your accounts.</p>
+        </>
+      ) : apps.length > 0 && rows.length === 0 ? (
+        <SampleNotice
+          label="Offer payouts: sample until Scout is connected"
+          previewHref="/best-offer-matcher?sample=1"
+        />
+      ) : null}
 
       <Card>
         <form
@@ -106,8 +170,12 @@ export function MatcherBoard({ rows, sample = false }: { rows: OfferRecord[]; sa
 
       {compared.length === 0 ? (
         <EmptyState
-          title="No offers to compare"
-          description="Nothing matched. Rejected offers stay hidden."
+          title={applied.query ? `No stored offers for ${applied.query}` : "No offers to compare"}
+          description={
+            apps.length > 0 && applied.query
+              ? "Nothing stored matches that app. Sample rows are not treated as yours."
+              : "Nothing matched. Rejected offers stay hidden."
+          }
         />
       ) : (
         <div className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">

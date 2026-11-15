@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { createOpportunity } from "@/app/opportunities/actions";
+import { SampleNotice } from "@/components/sample-notice";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Drawer } from "@/components/ui/drawer";
 import { EmptyState } from "@/components/ui/states";
 import { ScoreBadge } from "@/components/ui/score-badge";
@@ -27,6 +29,7 @@ import {
   type SortKey,
   type StatusFilter,
 } from "@/lib/opportunities-model";
+import { opportunityMatchesApp, type OwnerApp } from "@/lib/account-surfaces";
 import { formatUsd } from "@/lib/today-model";
 
 const PAGE_SIZE = 10;
@@ -91,12 +94,15 @@ export function OpportunitiesBoard({
   rows,
   sample = false,
   error,
+  yourApps = [],
 }: {
   rows: OpportunityRecord[];
   sample?: boolean;
   error?: string;
+  yourApps?: OwnerApp[];
 }) {
   const [query, setQuery] = useState("");
+  const [onlyYours, setOnlyYours] = useState(false);
   const [status, setStatus] = useState<StatusFilter>("not-rejected");
   const [category, setCategory] = useState("all");
   const [source, setSource] = useState("all");
@@ -117,6 +123,19 @@ export function OpportunitiesBoard({
     [rows],
   );
   const minValue = minHourly.trim() === "" ? null : Number(minHourly);
+  const appGroups = useMemo(() => {
+    const names = [...new Set(yourApps.map((app) => app.category))].sort();
+    return names.map((category) => ({
+      category,
+      apps: yourApps
+        .filter((app) => app.category === category)
+        .sort((a, b) => a.appName.localeCompare(b.appName)),
+    }));
+  }, [yourApps]);
+  const matchedCount = useMemo(
+    () => rows.filter((row) => row.status !== "rejected" && opportunityMatchesApp(row, yourApps)).length,
+    [rows, yourApps],
+  );
   const filtered = useMemo(
     () =>
       sortOpportunities(
@@ -126,18 +145,25 @@ export function OpportunitiesBoard({
           category,
           source,
           minHourly: minValue != null && Number.isFinite(minValue) ? minValue : null,
-        }),
+        }).filter((row) => !onlyYours || opportunityMatchesApp(row, yourApps)),
         sortKey,
         sortDirection,
       ),
-    [rows, query, status, category, source, minValue, sortKey, sortDirection],
+    [rows, query, status, category, source, minValue, sortKey, sortDirection, onlyYours, yourApps],
   );
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
   const visible = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
   const selected = rows.find((row) => row.id === selectedId) ?? null;
+  const pageSample = sample && yourApps.length === 0;
+  const feedSample = sample && yourApps.length > 0;
   const filtersDirty =
-    query !== "" || status !== "not-rejected" || category !== "all" || source !== "all" || minHourly !== "";
+    query !== "" ||
+    status !== "not-rejected" ||
+    category !== "all" ||
+    source !== "all" ||
+    minHourly !== "" ||
+    onlyYours;
 
   function toggleSort(key: SortKey) {
     setPage(0);
@@ -155,6 +181,7 @@ export function OpportunitiesBoard({
     setCategory("all");
     setSource("all");
     setMinHourly("");
+    setOnlyYours(false);
     setSortKey("hourly");
     setSortDirection("desc");
     setPage(0);
@@ -164,7 +191,7 @@ export function OpportunitiesBoard({
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          {sample ? (
+          {pageSample ? (
             <p className="mb-3 inline-flex rounded-full border border-border px-3 py-1 text-xs font-medium text-secondary">
               SAMPLE DATA. All numbers are mock. Not real offers or accounts.
             </p>
@@ -175,7 +202,7 @@ export function OpportunitiesBoard({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {sample ? (
+          {pageSample ? (
             <Button href="/opportunities" variant="secondary">
               Hide sample data
             </Button>
@@ -218,6 +245,58 @@ export function OpportunitiesBoard({
           );
         })}
       </div>
+
+      {yourApps.length > 0 ? (
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Your apps</h2>
+              <p className="mt-1 text-sm text-secondary">
+                {matchedCount === 0
+                  ? "None of these match an opportunity yet."
+                  : `${matchedCount} opportunities match an app you added.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-pressed={onlyYours}
+              onClick={() => {
+                setOnlyYours((current) => !current);
+                setPage(0);
+              }}
+              className={cn(
+                "inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-xs font-medium outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                onlyYours
+                  ? "bg-accent text-accent-foreground"
+                  : "border border-border text-secondary hover:text-foreground",
+              )}
+            >
+              Your apps
+              <span className="tabular-nums">{matchedCount}</span>
+            </button>
+          </div>
+          <div className="mt-4 space-y-3">
+            {appGroups.map((group) => (
+              <div key={group.category}>
+                <h3 className="text-xs font-medium text-secondary">{group.category}</h3>
+                <p className="mt-1 text-sm text-foreground">{group.apps.map((app) => app.appName).join(", ")}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {feedSample || (yourApps.length > 0 && rows.length === 0) ? (
+        <SampleNotice
+          label="Opportunities feed: sample until Scout is connected"
+          active={feedSample}
+          previewHref={feedSample ? undefined : "/opportunities?sample=1"}
+          hideHref={feedSample ? "/opportunities" : undefined}
+        />
+      ) : null}
+      {feedSample ? (
+        <p className="text-xs text-secondary">Sample rows are not your accounts.</p>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <label className="text-xs text-secondary md:col-span-2 xl:col-span-1">
@@ -292,8 +371,12 @@ export function OpportunitiesBoard({
 
       {filtered.length === 0 ? (
         <EmptyState
-          title="No matching opportunities"
-          description="Nothing matches these filters. Rejected tasks stay hidden while Not rejected is selected."
+          title={onlyYours ? "No opportunities match your apps" : "No matching opportunities"}
+          description={
+            onlyYours
+              ? "None of these rows use an app name from My accounts."
+              : "Nothing matches these filters. Rejected tasks stay hidden while Not rejected is selected."
+          }
           action={
             <Button variant="secondary" onClick={resetFilters}>
               Clear filters

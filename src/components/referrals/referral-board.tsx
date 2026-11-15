@@ -22,6 +22,7 @@ import {
   type ReferralRecord,
 } from "@/lib/referrals-model";
 import { formatUsd } from "@/lib/today-model";
+import { SampleNotice } from "@/components/sample-notice";
 
 const headerClass = "h-11 whitespace-nowrap align-middle";
 
@@ -55,12 +56,25 @@ function ReferralTable({ rows }: { rows: readonly ReferralRecord[] }) {
                   : `${row.ratePercent}%`
                 : `${formatUsd(row.payoutPerSignupCents)} per sign-up`}
             </TableCell>
-            <TableCell className="tabular-nums">{row.signups}</TableCell>
-            <TableCell>
-              <PriorityBadge value={row.priority} />
+            <TableCell className="tabular-nums">
+              {row.metricsRecorded === false ? "—" : row.signups}
             </TableCell>
             <TableCell>
-              {row.url ? <CopyButton value={row.url} label="Copy link" /> : <span className="text-xs text-secondary">No link</span>}
+              {row.metricsRecorded === false ? (
+                <span className="text-xs text-secondary">—</span>
+              ) : (
+                <PriorityBadge value={row.priority} />
+              )}
+            </TableCell>
+            <TableCell>
+              {row.copyValue || row.url ? (
+                <CopyButton
+                  value={(row.copyValue || row.url) ?? ""}
+                  label={row.url ? "Copy link" : "Copy code"}
+                />
+              ) : (
+                <span className="text-xs text-secondary">No link</span>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -69,10 +83,19 @@ function ReferralTable({ rows }: { rows: readonly ReferralRecord[] }) {
   );
 }
 
-export function ReferralBoard({ rows, sample = false }: { rows: ReferralRecord[]; sample?: boolean }) {
+export function ReferralBoard({
+  rows,
+  sample = false,
+  previewRows,
+}: {
+  rows: ReferralRecord[];
+  sample?: boolean;
+  previewRows?: ReferralRecord[];
+}) {
   const [mode, setMode] = useState<ReferralMode>("category");
   const groups = referralGroups(rows, mode);
   const stats = referralStats(rows);
+  const unrecorded = rows.some((row) => row.metricsRecorded === false);
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
@@ -95,13 +118,38 @@ export function ReferralBoard({ rows, sample = false }: { rows: ReferralRecord[]
         ) : null}
       </header>
 
+      {unrecorded && !sample ? (
+        <SampleNotice
+          label={
+            stats.signupsScope === "partial"
+              ? "Sign-ups and payout estimates: recorded only on stored referral links. Account links have no count."
+              : "Sign-ups and payout estimates: not recorded yet"
+          }
+          previewHref={previewRows ? undefined : "/referral-hub?sample=1"}
+        />
+      ) : null}
+
       <div className="grid items-stretch gap-3 md:grid-cols-3">
         <StatCard label="Active links" value={String(stats.activeCount)} detail={`${stats.categories} categories`} />
-        <StatCard label="Sign-ups" value={String(stats.signups)} detail="Stored count" />
+        <StatCard
+          label="Sign-ups"
+          value={stats.signupsScope === "none" ? "—" : String(stats.signups)}
+          detail={
+            stats.signupsScope === "none"
+              ? "Not recorded yet"
+              : stats.signupsScope === "partial"
+                ? "Stored counts only"
+                : "Stored count"
+          }
+        />
         <StatCard
           label="Estimated from sign-ups"
-          value={formatUsd(stats.estimatedCents)}
-          detail={`${stats.pendingCount} queued or claimed`}
+          value={stats.signupsScope === "none" ? "—" : formatUsd(stats.estimatedCents)}
+          detail={
+            stats.signupsScope === "none"
+              ? "No payout per sign-up is stored"
+              : `${stats.pendingCount} queued or claimed`
+          }
         />
       </div>
 
@@ -129,19 +177,25 @@ export function ReferralBoard({ rows, sample = false }: { rows: ReferralRecord[]
         <div className="flex flex-col gap-4">
           <Card>
             <h2 className="text-sm font-semibold text-foreground">Top priorities</h2>
-            <ol className="mt-3 space-y-3">
-              {stats.priorities.map((row, index) => (
-                <li key={row.id} className="flex items-center justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block text-sm text-foreground">
-                      {index + 1}. {row.label}
+            {stats.priorities.length === 0 ? (
+              <p className="mt-3 text-sm text-secondary">
+                No stored priority. Account links do not invent one.
+              </p>
+            ) : (
+              <ol className="mt-3 space-y-3">
+                {stats.priorities.map((row, index) => (
+                  <li key={row.id} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block text-sm text-foreground">
+                        {index + 1}. {row.label}
+                      </span>
+                      <span className="block truncate text-xs text-secondary">{row.notes ?? row.category}</span>
                     </span>
-                    <span className="block truncate text-xs text-secondary">{row.notes ?? row.category}</span>
-                  </span>
-                  <PriorityBadge value={row.priority} />
-                </li>
-              ))}
-            </ol>
+                    <PriorityBadge value={row.priority} />
+                  </li>
+                ))}
+              </ol>
+            )}
           </Card>
           <Card>
             <h2 className="text-sm font-semibold text-foreground">How priority is scored</h2>
@@ -151,6 +205,17 @@ export function ReferralBoard({ rows, sample = false }: { rows: ReferralRecord[]
           </Card>
         </div>
       </div>
+
+      {previewRows && previewRows.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <SampleNotice
+            label="Sample programs. These are not your links."
+            active
+            hideHref="/referral-hub"
+          />
+          <ReferralTable rows={previewRows} />
+        </section>
+      ) : null}
     </div>
   );
 }

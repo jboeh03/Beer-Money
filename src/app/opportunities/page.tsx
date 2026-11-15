@@ -5,6 +5,8 @@ import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { SetupNotice } from "@/components/setup-notice";
+import { loadAccountArea } from "@/lib/accounts-data";
+import { ownerApps } from "@/lib/account-surfaces";
 import { loadOpportunities } from "@/lib/opportunities-data";
 import { sampleOpportunities } from "@/lib/opportunities-sample";
 import { OpportunitiesSkeleton } from "@/components/opportunities/opportunities-skeleton";
@@ -32,13 +34,13 @@ async function OpportunitiesContent({
   const params = await searchParams;
   const sample = firstParam(params.sample) === "1";
   const errorCode = firstParam(params.error);
-  const loaded = await loadOpportunities();
+  const [loaded, accountsLoaded] = await Promise.all([loadOpportunities(), loadAccountArea()]);
 
-  if (loaded.status === "signed-out") {
+  if (loaded.status === "signed-out" || accountsLoaded.status === "signed-out") {
     redirect("/");
   }
 
-  if (loaded.status === "error") {
+  if (loaded.status === "error" && accountsLoaded.status !== "ready") {
     return (
       <AppShell activeHref="/opportunities">
         <ErrorState
@@ -54,9 +56,37 @@ async function OpportunitiesContent({
     );
   }
 
-  if (sample) {
+  if (loaded.status === "unconfigured" || accountsLoaded.status === "unconfigured") {
     return (
-      <AppShell activeHref="/opportunities" counts={{ opportunities: sampleOpportunities().filter((row) => row.status !== "rejected").length }}>
+      <AppShell activeHref="/opportunities">
+        <SetupNotice />
+      </AppShell>
+    );
+  }
+
+  const realRows = loaded.status === "ready" ? loaded.rows : [];
+  const yourApps = accountsLoaded.status === "ready" ? ownerApps(accountsLoaded.accounts) : [];
+  const showSampleFeed = sample && realRows.length === 0;
+
+  if (accountsLoaded.status === "error" && realRows.length === 0 && loaded.status !== "ready") {
+    return (
+      <AppShell activeHref="/opportunities">
+        <ErrorState
+          title="Opportunities could not load"
+          description="Your accounts could not be read. Nothing was claimed or submitted."
+        />
+        <div className="mt-4">
+          <Button href="/opportunities" variant="secondary">
+            Try again
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (realRows.length === 0 && yourApps.length === 0 && showSampleFeed) {
+    return (
+      <AppShell activeHref="/opportunities">
         <OpportunitiesBoard
           rows={sampleOpportunities()}
           sample
@@ -66,15 +96,7 @@ async function OpportunitiesContent({
     );
   }
 
-  if (loaded.status === "unconfigured") {
-    return (
-      <AppShell activeHref="/opportunities">
-        <SetupNotice />
-      </AppShell>
-    );
-  }
-
-  if (loaded.status === "empty") {
+  if (realRows.length === 0 && yourApps.length === 0) {
     return (
       <AppShell activeHref="/opportunities">
         <EmptyState
@@ -93,9 +115,14 @@ async function OpportunitiesContent({
   return (
     <AppShell
       activeHref="/opportunities"
-      counts={{ opportunities: loaded.rows.filter((row) => row.status !== "rejected").length }}
+      counts={{ opportunities: realRows.filter((row) => row.status !== "rejected").length }}
     >
-      <OpportunitiesBoard rows={loaded.rows} error={errorCode ? ERRORS[errorCode] : undefined} />
+      <OpportunitiesBoard
+        rows={showSampleFeed ? sampleOpportunities() : realRows}
+        sample={showSampleFeed}
+        yourApps={yourApps}
+        error={errorCode ? ERRORS[errorCode] : undefined}
+      />
     </AppShell>
   );
 }

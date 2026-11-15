@@ -5,6 +5,8 @@ import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/ui/states";
 import { SetupNotice } from "@/components/setup-notice";
+import { loadAccountArea } from "@/lib/accounts-data";
+import { mergeReferralRows, referralLinksFromAccounts } from "@/lib/account-surfaces";
 import { loadReferrals } from "@/lib/referrals-data";
 import { sampleReferrals } from "@/lib/referrals-sample";
 
@@ -32,13 +34,13 @@ async function ReferralContent({
   searchParams: Promise<{ sample?: string | string[] }>;
 }) {
   const sample = firstParam((await searchParams).sample) === "1";
-  const loaded = await loadReferrals();
+  const [loaded, accountsLoaded] = await Promise.all([loadReferrals(), loadAccountArea()]);
 
-  if (loaded.status === "signed-out") {
+  if (loaded.status === "signed-out" || accountsLoaded.status === "signed-out") {
     redirect("/");
   }
 
-  if (loaded.status === "error") {
+  if (loaded.status === "error" && accountsLoaded.status !== "ready") {
     return (
       <AppShell activeHref="/referral-hub">
         <ErrorState
@@ -54,15 +56,7 @@ async function ReferralContent({
     );
   }
 
-  if (sample) {
-    return (
-      <AppShell activeHref="/referral-hub">
-        <ReferralBoard rows={sampleReferrals()} sample />
-      </AppShell>
-    );
-  }
-
-  if (loaded.status === "unconfigured") {
+  if (loaded.status === "unconfigured" || accountsLoaded.status === "unconfigured") {
     return (
       <AppShell activeHref="/referral-hub">
         <SetupNotice />
@@ -70,7 +64,36 @@ async function ReferralContent({
     );
   }
 
-  if (loaded.status === "empty") {
+  const stored = loaded.status === "ready" ? loaded.rows : [];
+  const fromAccounts =
+    accountsLoaded.status === "ready" ? referralLinksFromAccounts(accountsLoaded.accounts) : [];
+  const rows = mergeReferralRows(stored, fromAccounts);
+
+  if (accountsLoaded.status === "error" && rows.length === 0 && loaded.status !== "ready") {
+    return (
+      <AppShell activeHref="/referral-hub">
+        <ErrorState
+          title="Referral links could not load"
+          description="Your accounts could not be read. Nothing was copied or submitted."
+        />
+        <div className="mt-4">
+          <Button href="/referral-hub" variant="secondary">
+            Try again
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (rows.length === 0 && sample) {
+    return (
+      <AppShell activeHref="/referral-hub">
+        <ReferralBoard rows={sampleReferrals()} sample />
+      </AppShell>
+    );
+  }
+
+  if (rows.length === 0) {
     return (
       <AppShell activeHref="/referral-hub">
         <EmptyState
@@ -88,7 +111,7 @@ async function ReferralContent({
 
   return (
     <AppShell activeHref="/referral-hub">
-      <ReferralBoard rows={loaded.rows} />
+      <ReferralBoard rows={rows} previewRows={sample ? sampleReferrals() : undefined} />
     </AppShell>
   );
 }
