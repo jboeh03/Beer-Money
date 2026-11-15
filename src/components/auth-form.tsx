@@ -56,7 +56,7 @@ export function AuthForm({ initialError }: { initialError?: string }) {
         const { error: signInError } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/today`,
           },
         });
 
@@ -75,7 +75,7 @@ export function AuthForm({ initialError }: { initialError?: string }) {
             email,
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/auth/callback`,
+              emailRedirectTo: `${window.location.origin}/auth/callback?next=/today`,
             },
           });
 
@@ -85,7 +85,7 @@ export function AuthForm({ initialError }: { initialError?: string }) {
         }
 
         if (signUpData.session) {
-          router.refresh();
+          router.replace("/today");
           return;
         }
 
@@ -103,7 +103,7 @@ export function AuthForm({ initialError }: { initialError?: string }) {
         return;
       }
 
-      router.refresh();
+      router.replace("/today");
     } catch {
       setError("Could not reach Supabase. Check the project URL and anon key.");
     } finally {
