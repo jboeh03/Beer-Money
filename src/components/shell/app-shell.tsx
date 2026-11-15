@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AccountMenu } from "@/components/shell/account-menu";
 import { NAV_ITEMS, type NavItem } from "@/components/shell/nav";
 import { cn } from "@/lib/cn";
 
@@ -88,13 +89,15 @@ export function AppShell({
       </a>
       <aside className="hidden border-r border-border md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:gap-6 md:p-4">
         <Brand href={homeHref} />
-        <nav aria-label="Primary" className="flex flex-col gap-1">
+        <nav aria-label="Primary" className="flex flex-1 flex-col gap-1">
           <NavLinks items={items} activeHref={activeHref} counts={counts} />
         </nav>
+        <AccountMenu />
       </aside>
       <div className="flex min-w-0 flex-col">
-        <header className="flex items-center border-b border-border px-4 py-3 md:hidden">
+        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 md:hidden">
           <Brand href={homeHref} />
+          <AccountMenu />
         </header>
         <main id="content" className="min-w-0 flex-1 px-4 py-6 pb-28 md:px-8 md:py-8 md:pb-8">
           {children}

@@ -13,7 +13,7 @@ const OTP_TYPES = [
 
 function safeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+    return "/today";
   }
 
   return value;
