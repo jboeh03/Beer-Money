@@ -44,7 +44,7 @@ export async function loadAccountArea(): Promise<AccountLoad> {
       supabase.from("wallet_addresses").select("id, label, address").order("created_at"),
     ]);
 
-    if (accounts.error || wallets.error) {
+    if (accounts.error) {
       return { status: "error" };
     }
 
@@ -61,11 +61,13 @@ export async function loadAccountArea(): Promise<AccountLoad> {
         cadence: row.cadence,
         notes: row.notes,
       })),
-      wallets: (wallets.data ?? []).map((row) => ({
-        id: row.id,
-        label: row.label,
-        address: row.address,
-      })),
+      wallets: wallets.error
+        ? []
+        : (wallets.data ?? []).map((row) => ({
+            id: row.id,
+            label: row.label,
+            address: row.address,
+          })),
     };
   } catch {
     return { status: "error" };

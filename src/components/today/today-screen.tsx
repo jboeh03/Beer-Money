@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/states";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ScoreBadge } from "@/components/ui/score-badge";
 import { StatCard } from "@/components/ui/stat-card";
+import { SampleNotice } from "@/components/sample-notice";
 import { EarningsChart } from "@/components/today/earnings-chart";
 import { TodayHeading } from "@/components/today/today-heading";
 import { cn } from "@/lib/cn";
@@ -133,23 +134,36 @@ export function TodayScreen({
   name,
   view,
   sample = false,
+  accountChecklist = null,
+  fixtureFeed = false,
+  fixtureEarnings = false,
+  preview = false,
+  previewView = null,
 }: {
   name: string;
   view: TodayView;
   sample?: boolean;
+  accountChecklist?: OpportunityView[] | null;
+  fixtureFeed?: boolean;
+  fixtureEarnings?: boolean;
+  preview?: boolean;
+  previewView?: TodayView | null;
 }) {
+  const checklist = accountChecklist ?? view.checklist;
+  const checklistDone = accountChecklist ? accountChecklist.filter((item) => item.completed).length : view.checklistDone;
+  const topOpportunities =
+    preview && fixtureFeed && previewView ? previewView.topOpportunities : view.topOpportunities;
+  const stats = preview && fixtureEarnings && previewView ? previewView.stats : view.stats;
+  const chart = preview && fixtureEarnings && previewView ? previewView.chart : view.chart;
+  const summary = accountChecklist
+    ? `${accountChecklist.length} of your apps are on the checklist. ${view.readyCount} opportunities ready.`
+    : `${view.readyCount} ready. ${view.vettedCount} passed vetting.`;
   const todayDelta =
-    view.stats.todayDeltaCents == null
-      ? undefined
-      : deltaCopy(view.stats.todayDeltaCents, "vs yesterday");
+    stats.todayDeltaCents == null ? undefined : deltaCopy(stats.todayDeltaCents, "vs yesterday");
   const weekDelta =
-    view.stats.weekDeltaCents == null
-      ? undefined
-      : deltaCopy(view.stats.weekDeltaCents, "vs last week");
+    stats.weekDeltaCents == null ? undefined : deltaCopy(stats.weekDeltaCents, "vs last week");
   const pendingDetail =
-    view.stats.pendingCount === 1
-      ? "1 payout processing"
-      : `${view.stats.pendingCount} payouts processing`;
+    stats.pendingCount === 1 ? "1 payout processing" : `${stats.pendingCount} payouts processing`;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
@@ -160,10 +174,7 @@ export function TodayScreen({
               SAMPLE DATA. All numbers are mock. Not real offers, payouts, or accounts.
             </p>
           ) : null}
-          <TodayHeading
-            name={name}
-            summary={`${view.readyCount} ready. ${view.vettedCount} passed vetting.`}
-          />
+          <TodayHeading name={name} summary={summary} />
         </div>
         {sample ? (
           <Button href="/today" variant="secondary">
@@ -172,28 +183,35 @@ export function TodayScreen({
         ) : null}
       </header>
 
+      {!sample && fixtureEarnings ? (
+        <SampleNotice
+          label="Earnings and payouts: sample until payouts are recorded"
+          active={preview}
+          previewHref={preview ? undefined : "/today?sample=1"}
+          hideHref={preview ? "/today" : undefined}
+        />
+      ) : null}
+
       <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
         <div className="w-[68vw] max-w-xs shrink-0 snap-start md:w-auto md:max-w-none">
-          <StatCard label="Earned today" value={formatUsd(view.stats.todayCents)} delta={todayDelta} />
+          <StatCard label="Earned today" value={formatUsd(stats.todayCents)} delta={todayDelta} />
         </div>
         <div className="w-[68vw] max-w-xs shrink-0 snap-start md:w-auto md:max-w-none">
-          <StatCard label="This week" value={formatUsd(view.stats.weekCents)} delta={weekDelta} />
+          <StatCard label="This week" value={formatUsd(stats.weekCents)} delta={weekDelta} />
         </div>
         <div className="w-[68vw] max-w-xs shrink-0 snap-start md:w-auto md:max-w-none">
           <StatCard
             label="This month"
-            value={formatUsd(view.stats.monthCents)}
+            value={formatUsd(stats.monthCents)}
             detail={
-              view.stats.paceCents == null
-                ? undefined
-                : `On pace for ${formatUsd(view.stats.paceCents)}`
+              stats.paceCents == null ? undefined : `On pace for ${formatUsd(stats.paceCents)}`
             }
           />
         </div>
         <div className="w-[68vw] max-w-xs shrink-0 snap-start md:w-auto md:max-w-none">
           <StatCard
             label="Pending payouts"
-            value={formatUsd(view.stats.pendingCents)}
+            value={formatUsd(stats.pendingCents)}
             detail={pendingDetail}
           />
         </div>
@@ -204,13 +222,19 @@ export function TodayScreen({
           <Card className="h-full">
             <h2 className="text-sm font-semibold text-foreground">Daily checklist</h2>
             <p className="mt-1 text-sm text-secondary">
-              Remind-only. These apps ban bots, so you tap the final step yourself.
+              {accountChecklist
+                ? "From your accounts. Remind-only. You tap the final step yourself. Completion is not tracked yet."
+                : "Remind-only. These apps ban bots, so you tap the final step yourself."}
             </p>
-            {view.checklist.length === 0 ? (
+            {checklist.length === 0 ? (
               <div className="mt-4">
                 <EmptyState
-                  title="No daily checklist"
-                  description="Add an opportunity with a Daily bonus category. Nothing here is claimed for you."
+                  title={accountChecklist ? "No bonus cadence" : "No daily checklist"}
+                  description={
+                    accountChecklist
+                      ? "Accounts with a daily, 24h, weekly, or monthly cadence show up here. Nothing is claimed for you."
+                      : "Add an opportunity with a Daily bonus category. Nothing here is claimed for you."
+                  }
                 />
               </div>
             ) : (
@@ -218,12 +242,12 @@ export function TodayScreen({
                 <div className="mt-4">
                   <ProgressBar
                     label="Completed"
-                    value={view.checklistDone}
-                    max={view.checklist.length}
+                    value={checklistDone}
+                    max={checklist.length}
                   />
                 </div>
                 <ul className="mt-3 space-y-1">
-                  {view.checklist.map((item) => (
+                  {checklist.map((item) => (
                     <ChecklistRow key={item.id} item={item} />
                   ))}
                 </ul>
@@ -238,7 +262,17 @@ export function TodayScreen({
               <h2 className="text-sm font-semibold text-foreground">Top opportunities</h2>
               <p className="text-xs text-secondary">Ranked by $/hr</p>
             </div>
-            {view.topOpportunities.length === 0 ? (
+            {!sample && fixtureFeed ? (
+              <div className="mt-4">
+                <SampleNotice
+                  label="Opportunities feed: sample until Scout is connected"
+                  active={preview}
+                  previewHref={preview ? undefined : "/today?sample=1"}
+                  hideHref={preview ? "/today" : undefined}
+                />
+              </div>
+            ) : null}
+            {topOpportunities.length === 0 ? (
               <div className="mt-4">
                 <EmptyState
                   title="No opportunities yet"
@@ -248,12 +282,12 @@ export function TodayScreen({
             ) : (
               <>
                 <div className="mt-4 hidden items-stretch gap-3 md:grid md:grid-cols-2">
-                  {view.topOpportunities.map((item) => (
+                  {topOpportunities.map((item) => (
                     <OpportunityCard key={item.id} item={item} />
                   ))}
                 </div>
                 <ul className="mt-2 md:hidden">
-                  {view.topOpportunities.map((item) => (
+                  {topOpportunities.map((item) => (
                     <li key={item.id}>
                       <OpportunityRow item={item} />
                     </li>
@@ -263,7 +297,7 @@ export function TodayScreen({
             )}
           </Card>
           <Card className="flex-1">
-            <EarningsChart chart={view.chart} />
+            <EarningsChart chart={chart} />
           </Card>
         </div>
       </div>

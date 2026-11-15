@@ -6,7 +6,10 @@ import { TodaySkeleton } from "@/components/today/today-skeleton";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { SetupNotice } from "@/components/setup-notice";
+import { loadAccountArea } from "@/lib/accounts-data";
+import { checklistFromAccounts } from "@/lib/account-surfaces";
 import { loadToday } from "@/lib/today-data";
+import { buildTodayView } from "@/lib/today-model";
 import { sampleTodayView } from "@/lib/today-sample";
 
 export const dynamic = "force-dynamic";
@@ -26,13 +29,13 @@ async function TodayContent({
 }) {
   const params = await searchParams;
   const sample = firstParam(params.sample) === "1";
-  const loaded = await loadToday();
+  const [loaded, accountsLoaded] = await Promise.all([loadToday(), loadAccountArea()]);
 
-  if (loaded.status === "signed-out") {
+  if (loaded.status === "signed-out" || accountsLoaded.status === "signed-out") {
     redirect("/");
   }
 
-  if (loaded.status === "error") {
+  if (loaded.status === "error" && accountsLoaded.status !== "ready") {
     return (
       <AppShell activeHref="/today">
         <ErrorState
@@ -48,16 +51,14 @@ async function TodayContent({
     );
   }
 
-  if (sample) {
-    const name = loaded.status === "unconfigured" ? "there" : loaded.name;
-    return (
-      <AppShell activeHref="/today">
-        <TodayScreen name={name} view={sampleTodayView(new Date())} sample />
-      </AppShell>
-    );
-  }
-
-  if (loaded.status === "unconfigured") {
+  if (loaded.status === "unconfigured" || accountsLoaded.status === "unconfigured") {
+    if (sample) {
+      return (
+        <AppShell activeHref="/today">
+          <TodayScreen name="there" view={sampleTodayView(new Date())} sample />
+        </AppShell>
+      );
+    }
     return (
       <AppShell activeHref="/today">
         <SetupNotice />
@@ -65,7 +66,37 @@ async function TodayContent({
     );
   }
 
-  if (loaded.status === "empty") {
+  const accounts = accountsLoaded.status === "ready" ? accountsLoaded.accounts : [];
+  const hasAccounts = accounts.length > 0;
+  const hasOpportunities = loaded.status === "ready" && loaded.hasOpportunities;
+  const hasPayouts = loaded.status === "ready" && loaded.hasPayouts;
+  const name = loaded.status === "ready" || loaded.status === "empty" ? loaded.name : "there";
+
+  if (accountsLoaded.status === "error" && loaded.status !== "ready") {
+    return (
+      <AppShell activeHref="/today">
+        <ErrorState
+          title="Today could not load"
+          description="Your accounts could not be read. Nothing was claimed or submitted."
+        />
+        <div className="mt-4">
+          <Button href="/today" variant="secondary">
+            Try again
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!hasAccounts && !hasOpportunities && !hasPayouts && sample) {
+    return (
+      <AppShell activeHref="/today">
+        <TodayScreen name={name} view={sampleTodayView(new Date())} sample />
+      </AppShell>
+    );
+  }
+
+  if (!hasAccounts && loaded.status === "empty") {
     return (
       <AppShell activeHref="/today">
         <EmptyState
@@ -81,12 +112,20 @@ async function TodayContent({
     );
   }
 
+  const view = loaded.status === "ready" ? loaded.view : buildTodayView([], [], new Date());
+  const preview = sample && (!hasOpportunities || !hasPayouts);
+
   return (
-    <AppShell
-      activeHref="/today"
-      counts={{ opportunities: loaded.view.readyCount }}
-    >
-      <TodayScreen name={loaded.name} view={loaded.view} />
+    <AppShell activeHref="/today" counts={{ opportunities: view.readyCount }}>
+      <TodayScreen
+        name={name}
+        view={view}
+        accountChecklist={hasAccounts ? checklistFromAccounts(accounts) : null}
+        fixtureFeed={!hasOpportunities}
+        fixtureEarnings={!hasPayouts}
+        preview={preview}
+        previewView={preview ? sampleTodayView(new Date()) : null}
+      />
     </AppShell>
   );
 }

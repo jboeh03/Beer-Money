@@ -14,6 +14,8 @@ export type ReferralRecord = {
   priority: number;
   status: RewardStatus;
   notes: string | null;
+  metricsRecorded?: boolean;
+  copyValue?: string | null;
 };
 
 export type ReferralMode = "category" | "priority";
@@ -42,23 +44,31 @@ export function referralGroups(rows: readonly ReferralRecord[], mode: ReferralMo
   }));
 }
 
+function metricsRecorded(row: ReferralRecord) {
+  return row.metricsRecorded !== false;
+}
+
 export function referralStats(rows: readonly ReferralRecord[]) {
   const active = activeReferrals(rows);
-  const signups = active.reduce((total, row) => total + row.signups, 0);
-  const estimatedCents = active.reduce((total, row) => {
+  const recorded = active.filter(metricsRecorded);
+  const signups = recorded.reduce((total, row) => total + row.signups, 0);
+  const estimatedCents = recorded.reduce((total, row) => {
     if (row.payoutPerSignupCents == null) {
       return total;
     }
     return total + row.signups * row.payoutPerSignupCents;
   }, 0);
-  const pending = active.filter((row) => row.status === "queued" || row.status === "claimed");
+  const pending = recorded.filter((row) => row.status === "queued" || row.status === "claimed");
+  const signupsScope: "known" | "partial" | "none" =
+    recorded.length === 0 ? "none" : recorded.length === active.length ? "known" : "partial";
   return {
     activeCount: active.length,
     categories: new Set(active.map((row) => row.category?.trim() || "Uncategorized")).size,
     signups,
     estimatedCents,
     pendingCount: pending.length,
-    priorities: [...active].sort((a, b) => b.priority - a.priority).slice(0, 5),
+    signupsScope,
+    priorities: [...recorded].sort((a, b) => b.priority - a.priority).slice(0, 5),
   };
 }
 
