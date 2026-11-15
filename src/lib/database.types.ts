@@ -142,6 +142,29 @@ type NotificationRow = {
   error: string | null;
 };
 
+type UserApiKeyRow = {
+  user_id: string;
+  provider: string;
+  ciphertext: string;
+  iv: string;
+  auth_tag: string;
+  key_hint: string;
+  created_at: string;
+  updated_at: string;
+  last_tested_at: string | null;
+  last_test_ok: boolean | null;
+};
+
+type UserApiKeySafeRow = {
+  user_id: string;
+  provider: string;
+  key_hint: string;
+  created_at: string;
+  updated_at: string;
+  last_tested_at: string | null;
+  last_test_ok: boolean | null;
+};
+
 type PostRow = {
   id: string;
   user_id: string;
@@ -235,8 +258,14 @@ export type Database = {
       };
       connected_accounts: Table<ConnectedAccountRow>;
       wallet_addresses: Table<WalletAddressRow>;
+      user_api_keys: Table<UserApiKeyRow>;
     };
-    Views: Record<string, never>;
+    Views: {
+      user_api_keys_safe: {
+        Row: UserApiKeySafeRow;
+        Relationships: [];
+      };
+    };
     Functions: {
       begin_owner_notifications: {
         Args: {

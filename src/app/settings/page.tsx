@@ -41,6 +41,19 @@ async function SettingsContent() {
           <p className="mt-2 text-sm text-secondary">{email ?? "Signed in"}</p>
         </Card>
         <Card>
+          <h2 className="text-sm font-semibold text-foreground">API keys</h2>
+          <p className="mt-2 text-sm text-secondary">
+            Bring your own keys for research and content. They are encrypted, and the page shows
+            only the last four characters.
+          </p>
+          <Link
+            href="/settings/api-keys"
+            className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-foreground underline outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            Open API keys
+          </Link>
+        </Card>
+        <Card>
           <h2 className="text-sm font-semibold text-foreground">Notifications</h2>
           <p className="mt-2 text-sm text-secondary">
             Reminders for rewards you claim yourself. They never sign in or submit a form.

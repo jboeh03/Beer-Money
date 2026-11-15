@@ -5,7 +5,8 @@ import type { Database } from "@/lib/database.types";
 
 // Server-only client. The signed-in test notification does not use it.
 // POST /api/notify uses it only to call the push RPCs.
-// The service role bypasses RLS, so callers must set user_id themselves.
+// API key storage uses it to write ciphertext the signed-in role cannot read.
+// The service role bypasses RLS, so callers must set user_id from the session.
 // Never import this module from a Client Component.
 export function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
