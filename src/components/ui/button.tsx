@@ -1,8 +1,10 @@
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  href?: string;
   variant?: "primary" | "secondary" | "ghost";
   size?: "md" | "sm";
   loading?: boolean;
@@ -24,6 +26,7 @@ const sizes = {
 };
 
 export function Button({
+  href,
   variant = "primary",
   size = "md",
   loading = false,
@@ -34,16 +37,25 @@ export function Button({
   ...props
 }: ButtonProps) {
   const unavailable = disabled || loading;
+  const classes = cn(
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium outline-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    variants[variant],
+    sizes[size],
+    className,
+  );
+
+  if (href && !unavailable) {
+    return (
+      <Link href={href} className={classes}>
+        {children}
+      </Link>
+    );
+  }
 
   return (
     <button
       type={type}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium outline-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
+      className={classes}
       disabled={unavailable}
       aria-busy={loading || undefined}
       {...props}

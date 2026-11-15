@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { SetupNotice } from "@/components/setup-notice";
-import { SignedInShell } from "@/components/signed-in-shell";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,8 +24,6 @@ export default async function Home({
   const errorCode = firstParam(params.error);
   const initialError = errorCode ? ERRORS[errorCode] : undefined;
 
-  let email: string | null = null;
-  let signedIn = false;
   let sessionError: string | undefined;
 
   if (configured) {
@@ -37,8 +35,7 @@ export default async function Home({
         /auth session missing/i.test(error?.message ?? "");
 
       if (data?.claims) {
-        signedIn = true;
-        email = typeof data.claims.email === "string" ? data.claims.email : null;
+        redirect("/today");
       } else if (error && !missingSession) {
         sessionError = "Could not check the session. Try again.";
       }
@@ -50,18 +47,12 @@ export default async function Home({
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-16">
       <p className="text-sm text-amber-400">Beer Money</p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-50">
-        {signedIn ? "You are signed in" : "Sign in"}
-      </h1>
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-50">Sign in</h1>
       <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-300">
-        Single-user rewards dashboard. This version only handles sign-in.
+        Single-user rewards dashboard. After you sign in, Today is the home screen.
       </p>
       {configured ? (
-        signedIn ? (
-          <SignedInShell email={email} />
-        ) : (
-          <AuthForm initialError={initialError ?? sessionError} />
-        )
+        <AuthForm initialError={initialError ?? sessionError} />
       ) : (
         <SetupNotice />
       )}

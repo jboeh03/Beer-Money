@@ -115,7 +115,9 @@ There is no wallet table in this version. When wallet data is added, it will be 
 
 ## Component gallery
 
-`/dev/components` previews the shared shell and components with fictional sample data. It is not a product screen. Product screens come in later pull requests.
+`/dev/components` previews the shared shell and components with fictional sample data. It is not a product screen.
+
+`/today` is the home screen after sign-in. It reads your opportunities and payouts. An empty account shows an empty state. Sample numbers appear only if you open Preview with sample data.
 
 ## Scripts
 
