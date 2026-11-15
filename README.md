@@ -113,6 +113,10 @@ Row Level Security is enabled and forced on every table. Policies are owner-only
 
 There is no wallet table in this version. When wallet data is added, it will be a public address only.
 
+## Component gallery
+
+`/dev/components` previews the shared shell and components with fictional sample data. It is not a product screen. Product screens come in later pull requests.
+
 ## Scripts
 
 ```bash
