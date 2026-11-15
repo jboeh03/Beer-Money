@@ -6,10 +6,15 @@ import { cn } from "@/lib/cn";
 
 export type SortDirection = "asc" | "desc";
 
-export function Table({ children }: { children: ReactNode }) {
+export function Table({ children, fluid = false }: { children: ReactNode; fluid?: boolean }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+      <table
+        className={cn(
+          "w-full border-collapse text-left text-sm",
+          !fluid && "min-w-[40rem]",
+        )}
+      >
         {children}
       </table>
     </div>
@@ -26,9 +31,21 @@ export function TableBody({ children }: { children: ReactNode }) {
   return <tbody>{children}</tbody>;
 }
 
-export function TableRow({ children }: { children: ReactNode }) {
+export function TableRow({
+  children,
+  onClick,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+}) {
   return (
-    <tr className="border-t border-border transition-colors hover:bg-muted/80 focus-within:bg-muted">
+    <tr
+      onClick={onClick}
+      className={cn(
+        "border-t border-border transition-colors hover:bg-muted/80 focus-within:bg-muted",
+        onClick && "cursor-pointer",
+      )}
+    >
       {children}
     </tr>
   );
@@ -43,12 +60,14 @@ const ariaSort = {
 export function TableHead({
   children,
   sorted = "none",
+  className,
 }: {
   children: ReactNode;
   sorted?: SortDirection | "none";
+  className?: string;
 }) {
   return (
-    <th scope="col" aria-sort={ariaSort[sorted]} className="px-3 py-3 font-medium">
+    <th scope="col" aria-sort={ariaSort[sorted]} className={cn("px-3 py-3 font-medium", className)}>
       {children}
     </th>
   );
